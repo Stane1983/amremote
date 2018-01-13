@@ -1,10 +1,27 @@
+/*
+ * Copyright (C) 2011 The Android Open Source Project
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ *  @author   Tellen Yu
+ *  @version  2.0
+ *  @date     2015/06/01
+ *  @par function description:
+ *  - 1 IR remote
+ */
+
 #define LOG_TAG "remotecfg"
 //#define LOG_NDEBUG 0
 
-#include <sys/ioctl.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <unistd.h>
 #include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -67,16 +84,13 @@ unsigned int adc_move_enable = 0;
 
 #define ARRAY_SIZE(x) (sizeof(x) / sizeof((x)[0]))
 
-int main(int argc, char* argv[])
+int remoteinit(const char* path)
 {
     int i;
     unsigned int val;
     remote_config_t *remote = NULL;
     int device_kp_fd = -1;
     int ret = 0;
-
-    for (i = 0; i < argc; i++)
-        printf("remotecfg parameter[%d] %s \n", i, argv[i]);
 
     for (i = 0; i < 256; i++)
         key_map[i] = KEY_RESERVED;
@@ -96,34 +110,14 @@ int main(int argc, char* argv[])
     remote->mouse_map = mouse_map;
     remote->factory_customercode_map = factory_customercode_map;
 
-    if (argc < 2) {
-        remote->factory_code = 0x40400001;
-        remote->work_mode = 1;
-        remote->repeat_enable = 1;
-        remote->release_delay = 150;
-        remote->debug_enable = 1;
-        remote->reg_control = 0xfbe40;
-        remote->repeat_delay = 250;
-        remote->repeat_peroid = 33;
-        memcpy(key_map, default_key_map, sizeof(key_map));
-        memcpy(mouse_map, default_mouse_map, sizeof(mouse_map));
-        memset(factory_customercode_map, 0, FACTCUSTCODE_MAX);
-    }
-    else if (argv[1][0] == '-') {
-        printf("Usage : %s configfile\n", argv[0]);
+    FILE *fp = fopen(path, "r");
+    if (!fp) {
+        printf("Open file %s is failed!!!\n", path);
         ret = -3;
         goto exit;
     }
-    else{
-        FILE *fp = fopen(argv[1], "r");
-        if (!fp) {
-            printf("Open file %s is failed!!!\n", argv[1]);
-            ret = -4;
-            goto exit;
-        }
-        parse_and_set_config_from_file(fp, remote);
-        fclose(fp);
-    }
+    parse_and_set_config_from_file(fp, remote);
+    fclose(fp);
 
     device_kp_fd = open(DEVICE_KP, O_RDWR);
     if (device_kp_fd > 0) {
